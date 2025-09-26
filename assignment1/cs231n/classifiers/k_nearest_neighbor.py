@@ -1,5 +1,6 @@
 from builtins import range
 from builtins import object
+from math import sqrt
 import numpy as np
 from past.builtins import xrange
 
@@ -75,8 +76,7 @@ class KNearestNeighbor(object):
                 # training point, and store the result in dists[i, j]. You should   #
                 # not use a loop over dimension, nor use np.linalg.norm().          #
                 #####################################################################
-                print("hello")
-                return
+                dists[i, j] = np.sqrt(np.sum((X[i] - self.X_train[j]) ** 2))
         return dists
 
     def compute_distances_one_loop(self, X):
@@ -96,7 +96,11 @@ class KNearestNeighbor(object):
             # points, and store the result in dists[i, :].                        #
             # Do not use np.linalg.norm().                                        #
             #######################################################################
-            pass
+            dif = X[i] - self.X_train  # (num_train, D)
+            dif = dif ** 2
+            dif = np.sum(dif, axis=1)
+            dif = np.sqrt(dif)
+            dists[i] = dif
         return dists
 
     def compute_distances_no_loops(self, X):
@@ -123,6 +127,11 @@ class KNearestNeighbor(object):
         #       and two broadcast sums.                                         #
         #########################################################################
 
+        square_first = np.sum(X ** 2, axis=1).reshape(num_test, 1)  # (num_test, 1)
+        square_second = np.sum(self.X_train ** 2, axis=1).reshape(1, num_train)  # (1, num_train)
+        cross_term = np.dot(X, self.X_train.T)  # (num_test, num_train)
+        dists = np.sqrt(square_first + square_second - 2 * cross_term)
+        
         return dists
 
     def predict_labels(self, dists, k=1):
@@ -151,7 +160,8 @@ class KNearestNeighbor(object):
             # neighbors. Store these labels in closest_y.                           #
             # Hint: Look up the function numpy.argsort.                             #
             #########################################################################
-
+            dist_i_sorted_indices = np.argsort(dists[i])[:k]
+            closest_y = self.y_train[dist_i_sorted_indices]
 
             #########################################################################
             # TODO:                                                                 #
@@ -160,6 +170,15 @@ class KNearestNeighbor(object):
             # Store this label in y_pred[i]. Break ties by choosing the smaller     #
             # label.                                                                #
             #########################################################################
-
+            dict = {}
+            for label in closest_y:
+                if label in dict:
+                    dict[label] += 1
+                else:
+                    dict[label] = 1
+            for key in dict.keys():
+                if dict[key] == max(dict.values()):
+                    y_pred[i] = key
+                    break
 
         return y_pred
