@@ -30,19 +30,27 @@ def softmax_loss_naive(W, X, y, reg):
     num_classes = W.shape[1]
     num_train = X.shape[0]
     for i in range(num_train):
-        scores = X[i].dot(W)
+        scores = X[i].dot(W) # 1x10
 
         # compute the probabilities in numerically stable way
         scores -= np.max(scores)
-        p = np.exp(scores)
+        p = np.exp(scores) # 1x10
         p /= p.sum()  # normalize
-        logp = np.log(p)
+        logp = np.log(p) # 1x10
 
         loss -= logp[y[i]]  # negative log probability is the loss
+
+        for j in range(num_classes):
+            if j != y[i]:
+                dW[:, j] += p[j] * X[i]  # (D,)
+            else:
+                dW[:, j] += - X[i] + p[j] * X[i]  # (D,)
+
 
 
     # normalized hinge loss plus regularization
     loss = loss / num_train + reg * np.sum(W * W)
+    dW = dW / num_train + reg * 2 * W
 
     #############################################################################
     # TODO:                                                                     #
@@ -67,6 +75,16 @@ def softmax_loss_vectorized(W, X, y, reg):
     loss = 0.0
     dW = np.zeros_like(W)
 
+    scores = X.dot(W)
+
+    row_max = np.max(scores, axis=1, keepdims=True)
+    scores -= row_max  # (500,10)
+    exp_scores = np.exp(scores)  # (N,C)
+    probs = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)  # (N,C)
+    log_probs = np.log(probs)  # (500,10)
+
+    loss_arr = log_probs[np.arange(X.shape[0]), y]  # (N,)
+    loss = -np.sum(loss_arr) / X.shape[0] + reg * np.sum(W * W)
 
     #############################################################################
     # TODO:                                                                     #
@@ -74,6 +92,10 @@ def softmax_loss_vectorized(W, X, y, reg):
     # result in loss.                                                           #
     #############################################################################
 
+    probs[np.arange(X.shape[0]), y] -= 1  # (N,C)
+
+    dW = X.T.dot(probs) / X.shape[0] + reg * 2 * W  # (D,C)
+    
 
     #############################################################################
     # TODO:                                                                     #
