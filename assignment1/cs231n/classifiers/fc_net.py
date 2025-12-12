@@ -91,9 +91,9 @@ class TwoLayerNet(object):
         
         W1, b1, W2, b2 = self.params.values()
 
-        out1, cache1 = affine_forward(X, W1, b1)
-        out2, cache2 = relu_forward(out1)
-        scores, cache3 = affine_forward(out2, W2, b2)
+        out_affine1, cache_affine1 = affine_forward(X, W1, b1)
+        out_relu, cache_relu = relu_forward(out_affine1)
+        scores, cache_affine2 = affine_forward(out_relu, W2, b2)
 
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -115,16 +115,22 @@ class TwoLayerNet(object):
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
         
-        loss, dl = softmax_loss(scores, y)
-        dx1, dw1, db1 = affine_backward(dl, cache3)
-        dx2 = relu_backward(dx1, cache2)
-        dx3, dw3, db3 = affine_backward(dx2, cache1)
+        loss, d_scores = softmax_loss(scores, y)
+        
+        d_out_relu, dw2, db2 = affine_backward(d_scores, cache_affine2)
+        d_out_affine1 = relu_backward(d_out_relu, cache_relu)
+        _, dw1, db1 = affine_backward(d_out_affine1, cache_affine1)
 
-        self.grads={
-           'W1': dw3,
-           'W2': dw1,
-           'b1': db3,
-           'b2': db1
+        loss += 0.5 * self.reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
+
+        dw1 += self.reg * W1
+        dw2 += self.reg * W2
+
+        grads={
+           'W1': dw1,
+           'W2': dw2,
+           'b1': db1,
+           'b2': db2
         }
 
         ############################################################################
@@ -221,6 +227,17 @@ class FullyConnectedNet(object):
         # parameters should be initialized to zeros.                               #
         ############################################################################
 
+        for i in range(1, self.num_layers+1):
+            layer_input_dim = input_dim if i == 1 else hidden_dims[i-2]
+            layer_output_dim = num_classes if i == self.num_layers else hidden_dims[i-1]
+
+            self.params['W'+str(i)] = np.random.randn(layer_input_dim, layer_output_dim) * weight_scale
+            self.params['b'+str(i)] = np.zeros(layer_output_dim)
+
+            if normalization == 'batchnorm':
+                self.params['beta'+str(i)] = np.zeros(layer_output_dim)
+                self.params['gamma'+str(i)] = np.zeros(layer_output_dim)
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -291,6 +308,35 @@ class FullyConnectedNet(object):
         # layer, etc.                                                              #
         ############################################################################
 
+        cache = {}
+        h = X
+
+        for i in range(1, self.num_layers):
+            W = self.params['W'+str(i)]
+            b = self.params['b'+str(i)]
+
+            h, fc_cache = affine_forward(h, W, b)
+
+            if self.normalization == 'batchnorm':
+               h, bn_cache = batchnorm_forward(h, self.params['gamma'+str(i)], self.params['beta'+str(i)], self.bn_params[i-1])
+            else:
+                bn_cache = None
+
+            h, relu_cache = relu_forward(h)
+
+            if self.use_dropout:
+                h, do_cache = dropout_forward(h, self.dropout_param)
+            else:
+                do_cache = None
+            
+            cache[i] = (fc_cache, bn_cache, relu_cache, do_cache)
+
+        W_last = self.params['W' + str(self.num_layers)]
+        b_last = self.params['b' + str(self.num_layers)]
+        scores, cache_last = affine_forward(h, W_last, b_last)
+        cache[self.num_layers] = cache_last
+
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -298,7 +344,7 @@ class FullyConnectedNet(object):
         # If test mode return early.
         if mode == "test":
             return scores
-
+        
         loss, grads = 0.0, {}
         ############################################################################
         # TODO: Implement the backward pass for the fully connected net. Store the #
@@ -313,7 +359,43 @@ class FullyConnectedNet(object):
         # automated tests, make sure that your L2 regularization includes a factor #
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
+        loss, d_scores = softmax_loss(scores, y)
 
+        dx, dw, db = affine_backward(d_scores, cache_last)
+        grads['W'+str(self.num_layers)] = dw + self.reg * self.params['W'+str(self.num_layers)]
+        grads['b'+str(self.num_layers)] = db
+        loss += 0.5 * self.reg*(np.sum(self.params['W'+str(self.num_layers)]* self.params['W'+str(self.num_layers)]))
+
+        for i in range(self.num_layers-1,0,-1):
+            if self.use_dropout:
+                dx = dropout_backward(dx, cache[i].do_cache)
+            
+            dx = relu_backward(dx, cache[i].relu_cache)
+
+            if self.normalization == 'batchnorm':
+               dx, dgamma, dbeta = batchnorm_backward(dx, cache[i].bn_cache)
+               grads['beta'+str(i)] = dbeta
+               grads['gamma'+str(i)] = dgamma
+               dx, dw, db = affine_backward(dx, cache[i].fc_cache)
+               
+               
+
+
+
+        d_out_affine1 = relu_backward(d_out_relu, cache_relu)
+        _, dw1, db1 = affine_backward(d_out_affine1, cache_affine1)
+
+        loss += 0.5 * self.reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
+
+        dw1 += self.reg * W1
+        dw2 += self.reg * W2
+
+        grads={
+           'W1': dw1,
+           'W2': dw2,
+           'b1': db1,
+           'b2': db2
+        }
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
