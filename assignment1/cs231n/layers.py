@@ -185,19 +185,20 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # Referencing the original paper (https://arxiv.org/abs/1502.03167)   #
         # might prove to be helpful.                                          #
         #######################################################################
-        sample_mean = np.mean(x, axis=0)
-        sample_var = np.var(x, axis=0)
+        mean = 1./N * np.sum(x, axis=0)
+        x_minus_mean = x - mean
+        square = x_minus_mean ** 2
+        var = 1./N * np.sum(square, axis=0)
+        sqrt_var = np.sqrt(var + eps)
+        invert = 1./sqrt_var
+        xhat = x_minus_mean * invert
+        gammax = gamma * xhat
+        out = gammax + beta
 
-        x_centered = x - sample_mean
-        std = np.sqrt(sample_var + eps)
-        x_norm = x_centered / std
+        running_mean = momentum * mean + (1 - momentum) * mean
+        running_var = momentum * var + (1 - momentum) * var
 
-        out = gamma * x_norm + beta
-
-        running_mean = momentum * running_mean + (1 - momentum) * sample_mean
-        running_var = momentum * running_var + (1 - momentum) * sample_var
-
-        cache = (x_norm, x_centered, std, gamma, sample_var, eps)
+        cache = (xhat, gamma, x_minus_mean, invert, sqrt_var, var, eps)
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -247,31 +248,33 @@ def batchnorm_backward(dout, cache):
     # Referencing the original paper (https://arxiv.org/abs/1502.03167)       #
     # might prove to be helpful.                                              #
     ###########################################################################
-    (x_norm, x_centered, std, gamma, sample_var, eps) = cache
+    (xhat, gamma, x_minus_mean, invert, sqrt_var, var, eps) = cache
+
+    N, D = dout.shape
 
     dbeta = np.sum(dout, axis = 0)
-    dgamma = np.sum(dout * x_norm, axis = 0)
+    dgammax = dout
 
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    dgamma = np.sum(dgammax * xhat, axis=0)
+    dxhat = dgammax * gamma
 
-    x, w, b = cache
-    dx, dw, db = None, None, None
-    ###########################################################################
-    # TODO: Implement the affine backward pass.                               #
-    ###########################################################################
-    dx = dout @ w.T
-    dx = dx.reshape(x.shape)
-    
-    x_reshape = x.reshape(x.shape[0], -1)
-    dw = x_reshape.T @ dout
+    dinvert = np.sum(dxhat*x_minus_mean, axis=0)
+    dx_minus_mean1 = dxhat * invert
 
-    db = np.sum(dout,axis=0)
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
-    return dx, dw, db
+    dsqrt_var = -1./(sqrt_var**2) * dinvert
+
+    dvar = 0.5 * 1./np.sqrt(var+eps) * dsqrt_var
+
+    dsq = 1./N * np.ones((N,D)) * dvar
+
+    dx_minus_mean2 = 2 * x_minus_mean * dsq
+
+    dx1 = (dx_minus_mean1 + dx_minus_mean2)
+    dmu = -1 * np.sum(dx_minus_mean1 + dx_minus_mean2, axis=0)
+
+    dx2 = 1./N * np.ones((N,D)) * dmu
+
+    dx = dx1+dx2
 
     return dx, dgamma, dbeta
 

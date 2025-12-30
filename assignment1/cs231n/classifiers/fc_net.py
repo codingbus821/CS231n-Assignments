@@ -330,7 +330,7 @@ class FullyConnectedNet(object):
                 do_cache = None
             
             cache[i] = (fc_cache, bn_cache, relu_cache, do_cache)
-
+        # print(cache)
         W_last = self.params['W' + str(self.num_layers)]
         b_last = self.params['b' + str(self.num_layers)]
         scores, cache_last = affine_forward(h, W_last, b_last)
@@ -370,32 +370,21 @@ class FullyConnectedNet(object):
             if self.use_dropout:
                 dx = dropout_backward(dx, cache[i].do_cache)
             
-            dx = relu_backward(dx, cache[i].relu_cache)
+            # print(cache[i])
+            dx = relu_backward(dx, cache[i][2])
 
             if self.normalization == 'batchnorm':
-               dx, dgamma, dbeta = batchnorm_backward(dx, cache[i].bn_cache)
+               dx, dgamma, dbeta = batchnorm_backward(dx, cache[i][1])
                grads['beta'+str(i)] = dbeta
                grads['gamma'+str(i)] = dgamma
-               dx, dw, db = affine_backward(dx, cache[i].fc_cache)
-               
-               
+               dx, dw, db = affine_backward(dx, cache[i][0])
+            else:
+               dx, dw, db = affine_backward(dx, cache[i][0])
+            
+            grads['W' + str(i)] = dw + self.reg * self.params['W' + str(i)]
+            grads['b' + str(i)] = db
 
-
-
-        d_out_affine1 = relu_backward(d_out_relu, cache_relu)
-        _, dw1, db1 = affine_backward(d_out_affine1, cache_affine1)
-
-        loss += 0.5 * self.reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
-
-        dw1 += self.reg * W1
-        dw2 += self.reg * W2
-
-        grads={
-           'W1': dw1,
-           'W2': dw2,
-           'b1': db1,
-           'b2': db2
-        }
+            loss += 0.5 * self.reg*(np.sum(self.params['W'+str(i)]* self.params['W'+str(i)]))
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
