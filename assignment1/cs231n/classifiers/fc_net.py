@@ -368,7 +368,7 @@ class FullyConnectedNet(object):
 
         for i in range(self.num_layers-1,0,-1):
             if self.use_dropout:
-                dx = dropout_backward(dx, cache[i].do_cache)
+                dx = dropout_backward(dx, cache[i][3])
             
             # print(cache[i])
             dx = relu_backward(dx, cache[i][2])

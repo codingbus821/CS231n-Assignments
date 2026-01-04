@@ -9,5 +9,5 @@
     "editor.parameterHints.enabled": false,
     "editor.suggest.snippetsPreventQuickSuggestions": false,
     "editor.snippetSuggestions": false,
-    "editor.hover.enabled": false,
+    "editor.hover.enabled": "off",
 }
