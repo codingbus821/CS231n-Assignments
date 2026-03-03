@@ -203,11 +203,11 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         sqrt_var = np.sqrt(var + eps)
         invert = 1./sqrt_var
         # print(f"forward std={invert}")
-        # xhat = x_minus_mean / sqrt_var
-        xhat = x_minus_mean * invert
+        xhat = x_minus_mean / sqrt_var
+        # xhat = x_minus_mean * invert
 
         # print(f"xhat1 = {xhat1}")
-        print(f"forward xhat={xhat}")
+        # print(f"forward xhat={xhat}")
         gammax = gamma * xhat
         out = gammax + beta
 
@@ -291,17 +291,17 @@ def batchnorm_backward(dout, cache):
 
     dx = dx1+dx2
 
-    print(f"""
-dbeta     : {dbeta}
-dgamma    : {dgamma}
-dxhat     : {dxhat}
-dsqrt_var : {dsqrt_var}
-dvar      : {dvar}
-dx1       : {dx1}
-dmu       : {dmu}
-dx2       : {dx2}
-dx        : {dx}
-""")
+#     print(f"""
+# dbeta     : {dbeta}
+# dgamma    : {dgamma}
+# dxhat     : {dxhat}
+# dsqrt_var : {dsqrt_var}
+# dvar      : {dvar}
+# dx1       : {dx1}
+# dmu       : {dmu}
+# dx2       : {dx2}
+# dx        : {dx}
+# """)
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -381,13 +381,9 @@ def batchnorm_forward1(x, gamma, beta, bn_param):
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         
         mu = x.mean(axis=0)        # batch mean for each feature
-        print(f"forward mean={mu}")
         var = x.var(axis=0)        # batch variance for each feature
-        print(f"forward var={var}")
         std = np.sqrt(var + eps)   # batch standard deviation for each feature
-        print(f"forward std={std}")
         x_hat = (x - mu) / std     # standartized x
-        print(f"forward xhat={x_hat}")
         out = gamma * x_hat + beta # scaled and shifted x_hat
 
         shape = bn_param.get('shape', (N, D))              # reshape used in backprop
@@ -468,17 +464,17 @@ def batchnorm_backward1(dout, cache):
     dx2 = dmu / len(dout)                                       # partial derivative w.t.r. dx
     dx = dx1 + dx2                                              # full derivative w.t.r. x
 
-    print(f"""
-dbeta     : {dbeta}
-dgamma    : {dgamma}
-dxhat     : {dx_hat}
-dsqrt_var : {dstd}
-dvar      : {dvar}
-dx1       : {dx1}
-dmu       : {dmu}
-dx2       : {dx2}
-dx        : {dx}
-""")
+#     print(f"""
+# dbeta     : {dbeta}
+# dgamma    : {dgamma}
+# dxhat     : {dx_hat}
+# dsqrt_var : {dstd}
+# dvar      : {dvar}
+# dx1       : {dx1}
+# dmu       : {dmu}
+# dx2       : {dx2}
+# dx        : {dx}
+# """)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
