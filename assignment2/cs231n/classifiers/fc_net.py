@@ -80,9 +80,9 @@ class FullyConnectedNet(object):
             self.params['W'+str(i)] = np.random.randn(layer_input_dim, layer_output_dim) * weight_scale
             self.params['b'+str(i)] = np.zeros(layer_output_dim)
 
-            if normalization == 'batchnorm':
+            if normalization == 'batchnorm' and i != self.num_layers:
                 self.params['beta'+str(i)] = np.zeros(layer_output_dim)
-                self.params['gamma'+str(i)] = np.zeros(layer_output_dim)
+                self.params['gamma'+str(i)] = np.ones(layer_output_dim)
 
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -175,7 +175,7 @@ class FullyConnectedNet(object):
                 do_cache = None
             
             cache[i] = (fc_cache, bn_cache, relu_cache, do_cache)
-        # print(cache)
+
         W_last = self.params['W' + str(self.num_layers)]
         b_last = self.params['b' + str(self.num_layers)]
         scores, cache_last = affine_forward(h, W_last, b_last)
@@ -213,7 +213,6 @@ class FullyConnectedNet(object):
             if self.use_dropout:
                 dx = dropout_backward(dx, cache[i][3])
             
-            # print(cache[i])
             dx = relu_backward(dx, cache[i][2])
 
             if self.normalization == 'batchnorm':

@@ -530,8 +530,6 @@ def batchnorm_backward_alt(dout, cache):
 
     N, D = dout.shape
 
-    # print(gamma.shape)
-
     dbeta = np.sum(dout, axis = 0)
     dgammax = dout
     dgamma = np.sum(dgammax * xhat, axis=0)
@@ -584,7 +582,28 @@ def layernorm_forward(x, gamma, beta, ln_param):
     # transformations you could perform, that would enable you to copy over   #
     # the batch norm code and leave it almost unchanged?                      #
     ###########################################################################
-    # 
+    # print("shape =", x.shape[1])
+    mean = 1./x.shape[1] * np.sum(x, axis=1)
+
+    x_minus_mean = x - mean[:, None]
+    square = x_minus_mean ** 2
+    var = 1./x.shape[1] * np.sum(square, axis=1)
+    # print(f"forward var={var}")
+    sqrt_var = np.sqrt(var + eps)
+    invert = 1./sqrt_var
+    # print(f"forward std={invert}")
+    xhat = x_minus_mean / sqrt_var[:, None]
+    # xhat = x_minus_mean * invert
+
+    # print(f"xhat1 = {xhat1}")
+    # print(f"forward xhat={xhat}")
+    gammax = gamma * xhat
+    out = gammax + beta
+
+    # running_mean = momentum * running_mean + (1 - momentum) * mean
+    # running_var = momentum * running_var  + (1 - momentum) * var
+
+    cache = (x, mean, xhat, gamma, x_minus_mean, invert, sqrt_var, var, eps)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -614,7 +633,22 @@ def layernorm_backward(dout, cache):
     # implementation of batch normalization. The hints to the forward pass    #
     # still apply!                                                            #
     ###########################################################################
-    # 
+    (x, mean, xhat, gamma, x_minus_mean, invert, sqrt_var, var, eps) = cache
+
+    N, D = dout.shape
+
+    dbeta = np.sum(dout, axis=0)
+    dgamma = np.sum(dout * xhat, axis=0)
+
+    dxhat = dout * gamma
+
+    sqrt_var = sqrt_var.reshape(N, 1)
+
+    dx = (1./D) * (1/sqrt_var) * (
+        D * dxhat
+        - np.sum(dxhat, axis=1, keepdims=True)
+        - xhat * np.sum(dxhat * xhat, axis=1, keepdims=True)
+    )
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
